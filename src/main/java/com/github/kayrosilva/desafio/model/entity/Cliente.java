@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 
@@ -21,5 +22,5 @@ public class Cliente {
     @Column(length = 90, nullable = false)
     private String sobrenome;
     @Column(length = 10, nullable = false)
-    private Date nacimento;
+    private LocalDate nacimento;
 }
