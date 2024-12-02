@@ -4,6 +4,8 @@ import com.github.kayrosilva.desafio.model.entity.Cliente;
 import com.github.kayrosilva.desafio.model.repository.ClienteRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,9 +43,13 @@ public class ClienteController {
     // Deletar um Cliente pelo id
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletar(@PathVariable Integer id){
+    public void deletar(@PathVariable Integer id) {
+        if (!repository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado");
+        }
         repository.deleteById(id);
     }
+
 
     // Recuperar um Cliente pelo ID
     @GetMapping("/{id}")
@@ -54,8 +60,8 @@ public class ClienteController {
 
     // Listar todos os Clientes
     @GetMapping
-    public List<Cliente> listar(){
-        return repository.findAll();
+    public Page<Cliente> listar(Pageable pageable) {
+        return repository.findAll(pageable);
     }
 
 
