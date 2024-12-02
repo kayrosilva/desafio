@@ -25,7 +25,7 @@ public class ClienteController {
     // Criar um novo Cliente
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Cliente salvar(@RequestBody Cliente cliente){
+    public Cliente salvar(@RequestBody Cliente cliente) {
         return repository.save(cliente);
     }
 
@@ -59,22 +59,13 @@ public class ClienteController {
     }
 
     // Listar todos os Clientes
-    @GetMapping
-    public Page<Cliente> listar(Pageable pageable) {
-        return repository.findAll(pageable);
+    @GetMapping("/filtrar")
+    public List<Cliente> filtrarPorIdade(@RequestParam Integer idade,
+                                         @RequestParam String tipo) {
+        if (!tipo.equalsIgnoreCase("maior") && !tipo.equalsIgnoreCase("menor")) {
+            throw new IllegalArgumentException("Tipo deve ser 'maior' ou 'menor'.");
+        }
+        return repository.findAllByIdadeFiltered(idade, tipo.toLowerCase());
     }
 
-
-// Listar Clientes maiores de 18 anos
-@GetMapping("/maiores-de-18")
-public List<Cliente> listarMaioresDe18() {
-    return repository.findAll().stream()
-            .filter(cliente -> cliente.getNacimento() != null && calcularIdade(cliente.getNacimento()) >= 18)
-            .toList();
-}
-
-//calcular idade
-private int calcularIdade(LocalDate dataNascimento) {
-    return Period.between(dataNascimento, LocalDate.now()).getYears();
-    }
 }
