@@ -16,10 +16,11 @@ import java.util.List;
 public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
 
 
-        @Query("SELECT c FROM Cliente c WHERE " +
-                "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nacimento, CURRENT_DATE) >= :idade AND :tipo = 'maior') OR " +
-                "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nacimento, CURRENT_DATE) < :idade AND :tipo = 'menor')")
-        List<Cliente> findAllByIdadeFiltered(@Param("idade") Integer idade,
-                                             @Param("tipo") String tipo);
-    }
+    @Query("SELECT c FROM Cliente c WHERE " +
+            "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nacimento, CURRENT_DATE) >= :idade AND :tipo = 'maior') OR " +
+            "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nacimento, CURRENT_DATE) < :idade AND :tipo = 'menor')")
+    Page<Cliente> findAllByIdadeFiltered(@Param("idade") Integer idade,
+                                         @Param("tipo") String tipo,
+                                         Pageable pageable);
+}
 
