@@ -27,7 +27,7 @@ public class ClienteController {
     // Criar um novo Cliente
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Cliente salvar(@RequestBody Cliente cliente){
+    public Cliente salvar(@RequestBody Cliente cliente) {
         return repository.save(cliente);
     }
 
@@ -62,12 +62,16 @@ public class ClienteController {
 
     // Listar todos os Clientes
     @GetMapping("/filtrar")
-    public Page<Cliente> filtrarPorIdade(@RequestParam Integer idade,
-                                         @RequestParam String tipo,
-                                         Pageable pageable) {
-        if (!tipo.equalsIgnoreCase("maior") && !tipo.equalsIgnoreCase("menor")) {
-            throw new IllegalArgumentException("Tipo deve ser 'maior' ou 'menor'.");
+    public Page<Cliente> filtrarPorIdade(
+            @RequestParam(required = false) Integer idade,
+            @RequestParam(required = false) String tipo,
+            Pageable pageable) {
+        if (idade != null && tipo != null) {
+            if (!tipo.equalsIgnoreCase("maior") && !tipo.equalsIgnoreCase("menor")) {
+                throw new IllegalArgumentException("Tipo deve ser 'maior' ou 'menor'.");
+            }
+            return repository.findAllByIdadeFiltered(idade, tipo.toLowerCase(), pageable);
         }
-        return repository.findAllByIdadeFiltered(idade, tipo.toLowerCase(), pageable);
+        return repository.findAll(pageable); // Retorna todos os clientes se nenhum filtro for fornecido.
     }
 }
