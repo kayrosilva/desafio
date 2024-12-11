@@ -13,14 +13,16 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 
-public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
+public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
 
     @Query("SELECT c FROM Cliente c WHERE " +
-            "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nacimento, CURRENT_DATE) >= :idade AND :tipo = 'maior') OR " +
-            "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nacimento, CURRENT_DATE) < :idade AND :tipo = 'menor')")
+            "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nascimento, CURRENT_DATE) >= :idade AND :tipo = 'maior') OR " +
+            "(FUNCTION('TIMESTAMPDIFF', YEAR, c.nascimento, CURRENT_DATE) < :idade AND :tipo = 'menor')")
     Page<Cliente> findAllByIdadeFiltered(@Param("idade") Integer idade,
                                          @Param("tipo") String tipo,
                                          Pageable pageable);
+
+    List<Cliente> id(Long id);
 }
 

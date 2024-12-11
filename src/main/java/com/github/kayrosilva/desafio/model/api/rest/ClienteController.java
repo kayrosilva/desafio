@@ -1,19 +1,21 @@
 package com.github.kayrosilva.desafio.model.api.rest;
 
 import com.github.kayrosilva.desafio.model.entity.Cliente;
+import com.github.kayrosilva.desafio.model.entity.Endereco;
 import com.github.kayrosilva.desafio.model.repository.ClienteRepository;
+import com.github.kayrosilva.desafio.model.repository.EnderecoRepository;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.OneToMany;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
-import java.time.Period;
 import java.util.List;
 
 @RestController
@@ -22,45 +24,45 @@ import java.util.List;
 @CrossOrigin("*")
 public class ClienteController {
 
-    private final ClienteRepository repository;
+    private final ClienteRepository clienteRepository;
+    private final EnderecoRepository enderecoRepository;
 
-    // Criar um novo Cliente
+    // 1. Criar um novo Cliente
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Cliente salvar(@RequestBody Cliente cliente) {
-        return repository.save(cliente);
+    public Cliente salvar(@RequestBody @Valid Cliente cliente) {
+        return clienteRepository.save(cliente);
     }
 
-    // Editar um Cliente existente
+    // 2. Editar um Cliente existente
     @PutMapping("/{id}")
-    public Cliente editar(@PathVariable Integer id, @RequestBody @Valid Cliente clienteAtualizado) {
-        return repository.findById(id).map(cliente -> {
+    public Cliente editar(@PathVariable Long id, @RequestBody @Valid Cliente clienteAtualizado) {
+        return clienteRepository.findById(id).map(cliente -> {
             cliente.setNome(clienteAtualizado.getNome());
             cliente.setSobrenome(clienteAtualizado.getSobrenome());
-            cliente.setNacimento(clienteAtualizado.getNacimento());
-            return repository.save(cliente);
+            cliente.setNascimento(clienteAtualizado.getNascimento());
+            return clienteRepository.save(cliente);
         }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
     }
 
-    // Deletar um Cliente pelo id
+    // 3. Deletar um Cliente pelo ID
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletar(@PathVariable Integer id) {
-        if (!repository.existsById(id)) {
+    public void deletar(@PathVariable Long id) {
+        if (!clienteRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado");
         }
-        repository.deleteById(id);
+        clienteRepository.deleteById(id);
     }
 
-
-    // Recuperar um Cliente pelo ID
+    // 4. Recuperar um Cliente pelo ID
     @GetMapping("/{id}")
-    public Cliente buscarPorId(@PathVariable Integer id) {
-        return repository.findById(id)
+    public Cliente buscarPorId(@PathVariable Long id) {
+        return clienteRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
     }
 
-    // Listar todos os Clientes
+    // 5. Listar todos os Clientes (com filtro opcional por idade)
     @GetMapping("/filtrar")
     public Page<Cliente> filtrarPorIdade(
             @RequestParam(required = false) Integer idade,
@@ -70,8 +72,21 @@ public class ClienteController {
             if (!tipo.equalsIgnoreCase("maior") && !tipo.equalsIgnoreCase("menor")) {
                 throw new IllegalArgumentException("Tipo deve ser 'maior' ou 'menor'.");
             }
-            return repository.findAllByIdadeFiltered(idade, tipo.toLowerCase(), pageable);
+            return clienteRepository.findAllByIdadeFiltered(idade, tipo.toLowerCase(), pageable);
         }
-        return repository.findAll(pageable); // Retorna todos os clientes se nenhum filtro for fornecido.
+        return clienteRepository.findAll(pageable);
     }
+
+    // 6. Buscar todos os endereços de um cliente específico
+    @GetMapping("/{id}/enderecos")
+    public ResponseEntity<List<Endereco>> listarEnderecosPorCliente(@PathVariable Long id) {
+        if (!clienteRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado");
+        }
+        List<Endereco> enderecos = enderecoRepository.findByClienteId(id);
+        return ResponseEntity.ok(enderecos);
+    }
+    // Entidade Cliente
+    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
+    private List<Endereco> enderecos;
 }
