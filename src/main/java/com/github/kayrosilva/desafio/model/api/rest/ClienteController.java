@@ -31,6 +31,11 @@ public class ClienteController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Cliente salvar(@RequestBody @Valid Cliente cliente) {
+        if (cliente.getEnderecos() != null) {
+            for (Endereco endereco : cliente.getEnderecos()) {
+                endereco.setCliente(cliente);
+            }
+        }
         return clienteRepository.save(cliente);
     }
 
@@ -77,15 +82,6 @@ public class ClienteController {
         return clienteRepository.findAll(pageable);
     }
 
-    // 6. Buscar todos os endereços de um cliente específico
-    @GetMapping("/{id}/enderecos")
-    public ResponseEntity<List<Endereco>> listarEnderecosPorCliente(@PathVariable Long id) {
-        if (!clienteRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado");
-        }
-        List<Endereco> enderecos = enderecoRepository.findByClienteId(id);
-        return ResponseEntity.ok(enderecos);
-    }
     // Entidade Cliente
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
     private List<Endereco> enderecos;

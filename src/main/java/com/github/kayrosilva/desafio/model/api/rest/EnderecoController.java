@@ -18,6 +18,7 @@ import java.util.Optional;
 @RequestMapping("/api/clientes/{clienteId}/enderecos")
 public class EnderecoController {
 
+
     @Autowired
     private EnderecoRepository enderecoRepository;
 
@@ -27,30 +28,19 @@ public class EnderecoController {
     // 1. Criar um novo endereço associado a um cliente
     @PostMapping
     public ResponseEntity<?> criarEndereco(@PathVariable Long clienteId, @RequestBody Endereco endereco) {
-        // Busca o cliente ou retorna 404 se não existir
+
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
 
-        // Busca os endereços do cliente atual
+
         List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId);
 
-        // Validação: cliente pode ter no máximo 5 endereços
-        if (enderecosCliente.size() >= 5) {
+        if (enderecosCliente.size() >= 8) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Cada cliente pode ter no máximo 5 endereços.");
+                    .body("Cada cliente pode ter no máximo 8 endereços.");
         }
 
-        // Define o ID manualmente para que os endereços tenham IDs de 1 a 5
-        int novoId = 1;
-        for (Endereco e : enderecosCliente) {
-            if (e.getId() == novoId) {
-                novoId++;
-            }
-        }
-
-        // Cria um novo endereço
         Endereco novoEndereco = new Endereco();
-        novoEndereco.setId((long) novoId); // Define o ID manualmente
         novoEndereco.setLogradouro(endereco.getLogradouro());
         novoEndereco.setNumero(endereco.getNumero());
         novoEndereco.setComplemento(endereco.getComplemento());
@@ -58,19 +48,33 @@ public class EnderecoController {
         novoEndereco.setCidade(endereco.getCidade());
         novoEndereco.setEstado(endereco.getEstado());
         novoEndereco.setCep(endereco.getCep());
+        novoEndereco.setDescricao(endereco.getDescricao());
         novoEndereco.setCliente(cliente);
 
-        // Salva o novo endereço
+
+        if (Boolean.TRUE.equals(endereco.getPrincipal())) {
+
+            for (Endereco e : enderecosCliente) {
+                if (Boolean.TRUE.equals(e.getPrincipal())) {
+                    e.setPrincipal(false);
+                    enderecoRepository.save(e);  // Salva a atualização do endereço principal anterior
+                }
+            }
+            novoEndereco.setPrincipal(true);  // Marca o novo endereço como principal
+        } else {
+            novoEndereco.setPrincipal(false);  // Caso contrário, não marca como principal
+        }
+
+        // Salva o novo endereço no banco de dados
         Endereco enderecoSalvo = enderecoRepository.save(novoEndereco);
 
-        // Retorna resposta
+        // Retorna a resposta com detalhes sobre o novo endereço
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 String.format("Endereço criado com sucesso para o cliente: %s %s (ID: %d). Endereço ID: %d, Logradouro: %s",
                         cliente.getNome(), cliente.getSobrenome(), cliente.getId(),
                         enderecoSalvo.getId(), enderecoSalvo.getLogradouro())
         );
     }
-
 
 
     // 2. Buscar todos os endereços de um cliente pelo ID do cliente
@@ -103,6 +107,23 @@ public class EnderecoController {
         }
 
         Endereco endereco = enderecoExistente.get();
+
+        // Verifica se o endereço atualizado deve ser principal
+        if (Boolean.TRUE.equals(enderecoAtualizado.getPrincipal())) {
+            // Marca o novo endereço como principal e os outros como secundários
+            List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId);
+            for (Endereco e : enderecosCliente) {
+                if (Boolean.TRUE.equals(e.getPrincipal()) && !e.getId().equals(endereco.getId())) {
+                    e.setPrincipal(false);
+                    enderecoRepository.save(e);
+                }
+            }
+            endereco.setPrincipal(true);
+        } else {
+            endereco.setPrincipal(false);
+        }
+
+        // Atualiza os campos do endereço
         endereco.setLogradouro(enderecoAtualizado.getLogradouro());
         endereco.setNumero(enderecoAtualizado.getNumero());
         endereco.setComplemento(enderecoAtualizado.getComplemento());
@@ -110,7 +131,9 @@ public class EnderecoController {
         endereco.setCidade(enderecoAtualizado.getCidade());
         endereco.setEstado(enderecoAtualizado.getEstado());
         endereco.setCep(enderecoAtualizado.getCep());
+        endereco.setDescricao(enderecoAtualizado.getDescricao());
 
+        // Salva o endereço atualizado
         enderecoRepository.save(endereco);
         return ResponseEntity.ok(endereco);
     }
@@ -128,4 +151,5 @@ public class EnderecoController {
         enderecoRepository.delete(endereco.get());
         return ResponseEntity.noContent().build();
     }
+
 }
