@@ -11,13 +11,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/clientes/{clienteId}/enderecos")
 public class EnderecoController {
-
 
     @Autowired
     private EnderecoRepository enderecoRepository;
@@ -28,12 +30,11 @@ public class EnderecoController {
     // 1. Criar um novo endereço associado a um cliente
     @PostMapping
     public ResponseEntity<?> criarEndereco(@PathVariable Long clienteId, @RequestBody Endereco endereco) {
-
         Cliente cliente = clienteRepository.findById(clienteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
 
-
-        List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId);
+        // Verifica os endereços já existentes do cliente
+        List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId, Pageable.unpaged()).getContent(); // Paginação não usada aqui
 
         if (enderecosCliente.size() >= 8) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -51,18 +52,23 @@ public class EnderecoController {
         novoEndereco.setDescricao(endereco.getDescricao());
         novoEndereco.setCliente(cliente);
 
-
-        if (Boolean.TRUE.equals(endereco.getPrincipal())) {
-
-            for (Endereco e : enderecosCliente) {
-                if (Boolean.TRUE.equals(e.getPrincipal())) {
-                    e.setPrincipal(false);
-                    enderecoRepository.save(e);  // Salva a atualização do endereço principal anterior
-                }
-            }
-            novoEndereco.setPrincipal(true);  // Marca o novo endereço como principal
+        // Se o cliente não tiver endereços, o novo endereço será automaticamente o principal
+        if (enderecosCliente.isEmpty()) {
+            novoEndereco.setPrincipal(true);
         } else {
-            novoEndereco.setPrincipal(false);  // Caso contrário, não marca como principal
+            // Se o cliente já tem endereços, não marca como principal, a menos que o novo endereço seja explicitamente marcado
+            if (Boolean.TRUE.equals(endereco.getPrincipal())) {
+                // Se o novo endereço for marcado como principal, desmarca os outros como principais
+                for (Endereco e : enderecosCliente) {
+                    if (Boolean.TRUE.equals(e.getPrincipal())) {
+                        e.setPrincipal(false);
+                        enderecoRepository.save(e);  // Salva a atualização do endereço principal anterior
+                    }
+                }
+                novoEndereco.setPrincipal(true);
+            } else {
+                novoEndereco.setPrincipal(false);  // Caso contrário, não marca como principal
+            }
         }
 
         // Salva o novo endereço no banco de dados
@@ -70,20 +76,26 @@ public class EnderecoController {
 
         // Retorna a resposta com detalhes sobre o novo endereço
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                String.format("Endereço criado com sucesso para o cliente: %s %s (ID: %d). Endereço ID: %d, Logradouro: %s",
+                String.format("cliente: %s %s (ID: %d). Endereço ID: %d, Logradouro: %s, Numero: %s, Complemento: %s, Bairro: %s, Cidade: %s, Estado: %s, Cep: %s, Descricao: %s",
                         cliente.getNome(), cliente.getSobrenome(), cliente.getId(),
-                        enderecoSalvo.getId(), enderecoSalvo.getLogradouro())
+                        enderecoSalvo.getId(), enderecoSalvo.getLogradouro(), enderecoSalvo.getNumero(),
+                        enderecoSalvo.getComplemento(), enderecoSalvo.getBairro(), enderecoSalvo.getCidade(),
+                        enderecoSalvo.getEstado(), enderecoSalvo.getCep(), enderecoSalvo.getDescricao())
         );
     }
 
-
-    // 2. Buscar todos os endereços de um cliente pelo ID do cliente
+    // 2. Buscar todos os endereços de um cliente pelo ID do cliente com paginação
     @GetMapping
-    public ResponseEntity<List<Endereco>> listarEnderecosPorCliente(@PathVariable Long clienteId) {
+    public ResponseEntity<Page<Endereco>> listarEnderecosPorCliente(@PathVariable Long clienteId, Pageable pageable) {
+        // Verifica se o cliente existe
         if (!clienteRepository.existsById(clienteId)) {
             return ResponseEntity.notFound().build();
         }
-        List<Endereco> enderecos = enderecoRepository.findByClienteId(clienteId);
+
+        // Consulta os endereços do cliente com paginação
+        Page<Endereco> enderecos = enderecoRepository.findByClienteId(clienteId, pageable);
+
+        // Retorna a página de endereços
         return ResponseEntity.ok(enderecos);
     }
 
@@ -111,7 +123,7 @@ public class EnderecoController {
         // Verifica se o endereço atualizado deve ser principal
         if (Boolean.TRUE.equals(enderecoAtualizado.getPrincipal())) {
             // Marca o novo endereço como principal e os outros como secundários
-            List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId);
+            List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId, Pageable.unpaged()).getContent(); // Paginação não usada aqui
             for (Endereco e : enderecosCliente) {
                 if (Boolean.TRUE.equals(e.getPrincipal()) && !e.getId().equals(endereco.getId())) {
                     e.setPrincipal(false);
@@ -143,13 +155,31 @@ public class EnderecoController {
     public ResponseEntity<Void> deletarEndereco(
             @PathVariable Long clienteId, @PathVariable Long enderecoId) {
 
-        Optional<Endereco> endereco = enderecoRepository.findByIdAndClienteId(enderecoId, clienteId);
-        if (endereco.isEmpty()) {
+        // Busca o endereço a ser deletado
+        Optional<Endereco> enderecoOptional = enderecoRepository.findByIdAndClienteId(enderecoId, clienteId);
+        if (enderecoOptional.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        enderecoRepository.delete(endereco.get());
+        Endereco endereco = enderecoOptional.get();
+        boolean enderecoEraPrincipal = Boolean.TRUE.equals(endereco.getPrincipal());
+
+        // Deleta o endereço
+        enderecoRepository.delete(endereco);
+
+        if (enderecoEraPrincipal) {
+            List<Endereco> enderecosRestantes = enderecoRepository.findByClienteId(clienteId, Pageable.unpaged()).getContent();
+
+            if (!enderecosRestantes.isEmpty()) {
+                Endereco enderecoComMaiorId = enderecosRestantes.stream()
+                        .max((e1, e2) -> Long.compare(e1.getId(), e2.getId()))
+                        .orElseThrow(); // Garantido que a lista não está vazia
+
+                enderecoComMaiorId.setPrincipal(true);
+                enderecoRepository.save(enderecoComMaiorId);
+            }
+        }
+
         return ResponseEntity.noContent().build();
     }
-
 }
