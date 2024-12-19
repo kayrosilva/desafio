@@ -1,4 +1,4 @@
-package com.github.kayrosilva.desafio.model.DTO;
+package com.github.kayrosilva.desafio.data.DTO;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

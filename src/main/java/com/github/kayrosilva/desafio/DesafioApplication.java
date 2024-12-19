@@ -1,7 +1,5 @@
 package com.github.kayrosilva.desafio;
 
-import com.github.kayrosilva.desafio.model.entity.Cliente;
-import com.github.kayrosilva.desafio.model.repository.ClienteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;

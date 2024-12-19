@@ -1,10 +1,10 @@
-package com.github.kayrosilva.desafio.model.api.rest;
+package com.github.kayrosilva.desafio.api.rest;
 
-import com.github.kayrosilva.desafio.model.entity.Cliente;
-import com.github.kayrosilva.desafio.model.entity.Endereco;
-import com.github.kayrosilva.desafio.model.repository.ClienteRepository;
-import com.github.kayrosilva.desafio.model.repository.EnderecoRepository;
-import com.github.kayrosilva.desafio.model.DTO.ClienteAtualizacaoDTO;
+import com.github.kayrosilva.desafio.data.entity.Cliente;
+import com.github.kayrosilva.desafio.data.entity.Endereco;
+import com.github.kayrosilva.desafio.data.repository.ClienteRepository;
+import com.github.kayrosilva.desafio.data.repository.EnderecoRepository;
+import com.github.kayrosilva.desafio.data.DTO.ClienteAtualizacaoDTO;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.OneToMany;

@@ -1,6 +1,6 @@
-package com.github.kayrosilva.desafio.model.repository;
+package com.github.kayrosilva.desafio.data.repository;
 
-import com.github.kayrosilva.desafio.model.entity.Endereco;
+import com.github.kayrosilva.desafio.data.entity.Endereco;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 

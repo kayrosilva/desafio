@@ -1,4 +1,4 @@
-package com.github.kayrosilva.desafio.model.entity;
+package com.github.kayrosilva.desafio.data.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
