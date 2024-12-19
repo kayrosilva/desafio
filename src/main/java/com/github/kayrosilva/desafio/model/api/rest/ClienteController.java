@@ -4,6 +4,7 @@ import com.github.kayrosilva.desafio.model.entity.Cliente;
 import com.github.kayrosilva.desafio.model.entity.Endereco;
 import com.github.kayrosilva.desafio.model.repository.ClienteRepository;
 import com.github.kayrosilva.desafio.model.repository.EnderecoRepository;
+import com.github.kayrosilva.desafio.model.DTO.ClienteAtualizacaoDTO;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.OneToMany;
@@ -31,9 +32,18 @@ public class ClienteController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Cliente salvar(@RequestBody @Valid Cliente cliente) {
-        if (cliente.getEnderecos() != null) {
+        if (cliente.getEnderecos() != null && !cliente.getEnderecos().isEmpty()) {
+            boolean temEnderecoPrincipal = cliente.getEnderecos()
+                    .stream()
+                    .anyMatch(Endereco::getPrincipal);
+
             for (Endereco endereco : cliente.getEnderecos()) {
                 endereco.setCliente(cliente);
+            }
+
+            // Se nenhum endereço for explicitamente marcado como principal, define o primeiro como principal
+            if (!temEnderecoPrincipal) {
+                cliente.getEnderecos().get(0).setPrincipal(true);
             }
         }
         return clienteRepository.save(cliente);
@@ -41,11 +51,13 @@ public class ClienteController {
 
     // 2. Editar um Cliente existente
     @PutMapping("/{id}")
-    public Cliente editar(@PathVariable Long id, @RequestBody @Valid Cliente clienteAtualizado) {
+    public Cliente editar(@PathVariable Long id, @RequestBody @Valid ClienteAtualizacaoDTO clienteDTO) {
         return clienteRepository.findById(id).map(cliente -> {
-            cliente.setNome(clienteAtualizado.getNome());
-            cliente.setSobrenome(clienteAtualizado.getSobrenome());
-            cliente.setNascimento(clienteAtualizado.getNascimento());
+            // Atualiza apenas os campos permitidos (nome, sobrenome e nascimento)
+            cliente.setNome(clienteDTO.getNome());
+            cliente.setSobrenome(clienteDTO.getSobrenome());
+            cliente.setNascimento(clienteDTO.getNascimento());
+
             return clienteRepository.save(cliente);
         }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
     }
