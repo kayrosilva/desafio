@@ -6,6 +6,9 @@ import com.github.kayrosilva.desafio.data.repository.ClienteRepository;
 import com.github.kayrosilva.desafio.data.repository.EnderecoRepository;
 import com.github.kayrosilva.desafio.data.DTO.ClienteAtualizacaoDTO;
 
+import com.github.kayrosilva.desafio.service.ClienteService;
+import com.github.kayrosilva.desafio.service.excessoes.NotFoundException;
+import com.github.kayrosilva.desafio.service.excessoes.ValidacaoException;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.OneToMany;
 import jakarta.validation.Valid;
@@ -19,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
+
 @RestController
 @RequestMapping("/api/cliente")
 @RequiredArgsConstructor
@@ -27,56 +32,55 @@ public class ClienteController {
 
     private final ClienteRepository clienteRepository;
     private final EnderecoRepository enderecoRepository;
+    private final ClienteService clienteService;
 
     // 1. Criar um novo Cliente
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Cliente salvar(@RequestBody @Valid Cliente cliente) {
-        if (cliente.getEnderecos() != null && !cliente.getEnderecos().isEmpty()) {
-            boolean temEnderecoPrincipal = cliente.getEnderecos()
-                    .stream()
-                    .anyMatch(Endereco::getPrincipal);
-
-            for (Endereco endereco : cliente.getEnderecos()) {
-                endereco.setCliente(cliente);
-            }
-
-            // Se nenhum endereço for explicitamente marcado como principal, define o primeiro como principal
-            if (!temEnderecoPrincipal) {
-                cliente.getEnderecos().get(0).setPrincipal(true);
-            }
+    public Cliente criarCliente(
+            @RequestBody @Valid Cliente cliente) {
+        try {
+            return clienteService.criarCliente(cliente);
+        } catch (ValidacaoException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
-        return clienteRepository.save(cliente);
     }
+
 
     // 2. Editar um Cliente existente
     @PutMapping("/{id}")
-    public Cliente editar(@PathVariable Long id, @RequestBody @Valid ClienteAtualizacaoDTO clienteDTO) {
-        return clienteRepository.findById(id).map(cliente -> {
-            // Atualiza apenas os campos permitidos (nome, sobrenome e nascimento)
-            cliente.setNome(clienteDTO.getNome());
-            cliente.setSobrenome(clienteDTO.getSobrenome());
-            cliente.setNascimento(clienteDTO.getNascimento());
-
-            return clienteRepository.save(cliente);
-        }).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
+    public Cliente editar(
+            @PathVariable Long id, @RequestBody @Valid ClienteAtualizacaoDTO clienteDTO) {
+        try {
+            return clienteService.atualizaCliente(id, clienteDTO);
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
     }
 
     // 3. Deletar um Cliente pelo ID
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletar(@PathVariable Long id) {
-        if (!clienteRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado");
+    public void deletar(
+            @PathVariable Long clienteId) {
+        try {
+            clienteService.deletar(clienteId);
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }
-        clienteRepository.deleteById(id);
+
     }
 
     // 4. Recuperar um Cliente pelo ID
     @GetMapping("/{id}")
-    public Cliente buscarPorId(@PathVariable Long id) {
-        return clienteRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
+    public Cliente buscarPorId(
+            @PathVariable Long clienteId){
+        try {
+            return clienteService.buscarPorId(clienteId);
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+
     }
 
     // 5. Listar todos os Clientes (com filtro opcional por idade)

@@ -6,15 +6,12 @@ import java.time.LocalDate;
 
 public class ClienteAtualizacaoDTO {
 
-    @NotNull
-    @Size(min = 2, max = 100)
+    @Size(max = 100, message = "O nome deve ter no máximo 100 caracteres")
     private String nome;
 
-    @NotNull
-    @Size(min = 2, max = 100)
+    @Size(max = 100, message = "O sobrenome deve ter no máximo 100 caracteres")
     private String sobrenome;
 
-    @NotNull
     private LocalDate nascimento;
 
     // Getters e Setters
@@ -42,4 +39,3 @@ public class ClienteAtualizacaoDTO {
         this.nascimento = nascimento;
     }
 }
-

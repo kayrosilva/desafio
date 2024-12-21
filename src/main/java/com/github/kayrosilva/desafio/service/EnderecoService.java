@@ -25,6 +25,7 @@ public class EnderecoService {
     private ClienteRepository clienteRepository;
 
 
+    // 1. Criar um novo endereço associado a um cliente
     public Endereco criarEndereco(Long clienteId, Endereco endereco) throws NotFoundException, ValidacaoException {
 
         Cliente cliente = clienteRepository.findById(clienteId)
@@ -71,7 +72,7 @@ public class EnderecoService {
         return enderecoRepository.save(novoEndereco);
 
     }
-
+    // 2. Buscar todos os endereços de um cliente pelo ID do cliente com paginação
     public Page<Endereco> listarEnderecosPorCliente(Long clienteId, Pageable pageable) throws NotFoundException {
         // Verifica se o cliente existe
         if (!clienteRepository.existsById(clienteId)) {
@@ -82,11 +83,13 @@ public class EnderecoService {
         return enderecoRepository.findByClienteId(clienteId, pageable);
     }
 
+    // 3. Buscar um endereço específico de um cliente
     public Endereco buscarEnderecoPorId(Long clienteId, Long enderecoId) throws NotFoundException {
         return enderecoRepository.findByIdAndClienteId(enderecoId, clienteId)
                 .orElseThrow(()-> new NotFoundException(MENSAGEM_ENDERECO_POR_CLIENTE_NAO_ENCONTRADO));
     }
 
+    // 4. Editar um endereço específico associado a um cliente
     public Endereco atualizarEndereco(Long clienteId, Long enderecoId, Endereco enderecoAtualizado) throws NotFoundException {
         Endereco endereco = enderecoRepository.findByIdAndClienteId(enderecoId, clienteId)
                 .orElseThrow(()-> new NotFoundException(MENSAGEM_ENDERECO_POR_CLIENTE_NAO_ENCONTRADO));
@@ -118,6 +121,7 @@ public class EnderecoService {
         return enderecoRepository.save(endereco);
     }
 
+    // 5. Deletar um endereço específico de um cliente
     public void deletarEndereco(Long clienteId, Long enderecoId) throws NotFoundException {
         // Busca o endereço a ser deletado
         Endereco endereco = enderecoRepository.findByIdAndClienteId(enderecoId, clienteId)
