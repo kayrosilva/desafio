@@ -85,18 +85,22 @@ public class ClienteService {
     public Page<Cliente> filtrarPorIdade(
             @RequestParam(required = false) Integer idade,
             @RequestParam(required = false) String tipo,
-            Pageable pageable)  {
+            Pageable pageable) throws NotFoundException {
+        // Verifica se os dois parametros foram fornecidos
+        if ((idade == null && tipo != null) || (idade != null && tipo == null)) {
+            throw new IllegalArgumentException("Ambos os parâmetros 'idade' e 'tipo' devem ser fornecidos juntos.");
+        }
+
+        // Se ambos os parâmetros forem fornecidos, valida o tipo
         if (idade != null && tipo != null) {
             if (!tipo.equalsIgnoreCase("maior") && !tipo.equalsIgnoreCase("menor")) {
                 throw new IllegalArgumentException("Tipo deve ser 'maior' ou 'menor'.");
             }
             return clienteRepository.findAllByIdadeFiltered(idade, tipo.toLowerCase(), pageable);
         }
+
+        // Caso nenhum parâmetro seja fornecido, retorna todos os clientes
         return clienteRepository.findAll(pageable);
     }
-
-    // Entidade Cliente
-    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
-    private List<Endereco> enderecos;
 }
 

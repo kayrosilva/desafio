@@ -74,7 +74,7 @@ public class ClienteController {
     // 4. Recuperar um Cliente pelo ID
     @GetMapping("/{id}")
     public Cliente buscarPorId(
-            @PathVariable Long clienteId){
+            @PathVariable Long clienteId) {
         try {
             return clienteService.buscarPorId(clienteId);
         } catch (NotFoundException e) {
@@ -89,16 +89,17 @@ public class ClienteController {
             @RequestParam(required = false) Integer idade,
             @RequestParam(required = false) String tipo,
             Pageable pageable) {
-        if (idade != null && tipo != null) {
-            if (!tipo.equalsIgnoreCase("maior") && !tipo.equalsIgnoreCase("menor")) {
-                throw new IllegalArgumentException("Tipo deve ser 'maior' ou 'menor'.");
-            }
-            return clienteRepository.findAllByIdadeFiltered(idade, tipo.toLowerCase(), pageable);
+        try {
+            return clienteService.filtrarPorIdade(idade, tipo, pageable);
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
-        return clienteRepository.findAll(pageable);
     }
 
+
     // Entidade Cliente
-    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
-    private List<Endereco> enderecos;
-}
+        @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
+        private List<Endereco> enderecos;
+    }
