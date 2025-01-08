@@ -1,85 +1,58 @@
 package com.github.kayrosilva.desafio.api.rest;
 
-import com.github.kayrosilva.desafio.service.excessoes.NotFoundException;
-import com.github.kayrosilva.desafio.data.entity.Endereco;
-
 import com.github.kayrosilva.desafio.service.EnderecoService;
-import com.github.kayrosilva.desafio.service.excessoes.ValidacaoException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
+import com.github.kayrosilva.desafio.data.entity.Endereco;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
-import java.util.List;
-import java.util.Optional;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import com.github.kayrosilva.desafio.service.excessoes.NotFoundException;
+import com.github.kayrosilva.desafio.service.excessoes.ValidacaoException;
 
 @RestController
 @RequestMapping("/api/clientes/{clienteId}/enderecos")
+@RequiredArgsConstructor
+@CrossOrigin("*")
 public class EnderecoController {
 
-    @Autowired
-    private EnderecoService enderecoService;
+    private final EnderecoService enderecoService;
 
     // 1. Criar um novo endereço associado a um cliente
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Endereco criarEndereco(@PathVariable Long clienteId, @RequestBody Endereco endereco) {
-        // Retorna a resposta com detalhes sobre o novo endereço
-        try {
-            return enderecoService.criarEndereco(clienteId, endereco);
-        } catch (NotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        } catch (ValidacaoException e){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-        }
+    public ResponseEntity<Endereco> criarEndereco(@PathVariable Long clienteId, @RequestBody Endereco endereco) throws NotFoundException, ValidacaoException {
+        Endereco novoEndereco = enderecoService.criarEndereco(clienteId, endereco);
+        return ResponseEntity.status(201).body(novoEndereco);
     }
 
-    // 2. Buscar todos os endereços de um cliente pelo ID do cliente com paginação
+    // 2. Buscar todos os endereços de um cliente pelo ID com paginação
     @GetMapping
-    public Page<Endereco> listarEnderecosPorCliente(@PathVariable Long clienteId, Pageable pageable) {
-        try {
-            return enderecoService.listarEnderecosPorCliente(clienteId, pageable);
-        } catch (NotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+    public ResponseEntity<Page<Endereco>> listarEnderecosPorCliente(@PathVariable Long clienteId, Pageable pageable) throws NotFoundException {
+        Page<Endereco> enderecos = enderecoService.listarEnderecosPorCliente(clienteId, pageable);
+        return ResponseEntity.ok(enderecos);
     }
 
     // 3. Buscar um endereço específico de um cliente
     @GetMapping("/{enderecoId}")
-    public Endereco buscarEnderecoPorId(
-            @PathVariable Long clienteId, @PathVariable Long enderecoId) {
-        try {
-            return enderecoService.buscarEnderecoPorId(clienteId, enderecoId);
-        }catch (NotFoundException e){
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+    public ResponseEntity<Endereco> buscarEnderecoPorId(
+            @PathVariable Long clienteId, @PathVariable Long enderecoId) throws NotFoundException {
+        Endereco endereco = enderecoService.buscarEnderecoPorId(clienteId, enderecoId);
+        return ResponseEntity.ok(endereco);
     }
 
     // 4. Editar um endereço específico associado a um cliente
     @PutMapping("/{enderecoId}")
-    public Endereco atualizarEndereco(
-            @PathVariable Long clienteId, @PathVariable Long enderecoId, @RequestBody Endereco enderecoAtualizado) {
-        try {
-            return enderecoService.atualizarEndereco( clienteId,  enderecoId,  enderecoAtualizado);
-        } catch (NotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
+    public ResponseEntity<Endereco> atualizarEndereco(
+            @PathVariable Long clienteId, @PathVariable Long enderecoId, @RequestBody Endereco enderecoAtualizado) throws NotFoundException {
+        Endereco endereco = enderecoService.atualizarEndereco(clienteId, enderecoId, enderecoAtualizado);
+        return ResponseEntity.ok(endereco);
     }
 
     // 5. Deletar um endereço específico de um cliente
     @DeleteMapping("/{enderecoId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarEndereco(
-            @PathVariable Long clienteId, @PathVariable Long enderecoId) {
-        try {
-            enderecoService.deletarEndereco( clienteId,  enderecoId);
-        } catch (NotFoundException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-        }
-
+    public ResponseEntity<Void> deletarEndereco(@PathVariable Long clienteId, @PathVariable Long enderecoId) throws NotFoundException {
+        enderecoService.deletarEndereco(clienteId, enderecoId);
+        return ResponseEntity.noContent().build();
     }
 }
+

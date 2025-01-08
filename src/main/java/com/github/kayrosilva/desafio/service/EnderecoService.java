@@ -19,25 +19,31 @@ public class EnderecoService {
 
     public static final String MENSAGEM_CLIENTE_NAO_ENCONTRADO = "Cliente para criação do endereço não encontrado!";
     public static final String MENSAGEM_ENDERECO_POR_CLIENTE_NAO_ENCONTRADO = "Não existe este endereço para este cliente!";
+
     @Autowired
     private EnderecoRepository enderecoRepository;
     @Autowired
     private ClienteRepository clienteRepository;
 
-
     // 1. Criar um novo endereço associado a um cliente
     public Endereco criarEndereco(Long clienteId, Endereco endereco) throws NotFoundException, ValidacaoException {
-
-        Cliente cliente = clienteRepository.findById(clienteId)
-                .orElseThrow(() -> new NotFoundException(MENSAGEM_CLIENTE_NAO_ENCONTRADO));
+        Cliente cliente = getClienteById(clienteId);
 
         // Verifica os endereços já existentes do cliente
         List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId, Pageable.unpaged()).getContent(); // Paginação não usada aqui
 
         if (enderecosCliente.size() >= 8) {
-            new ValidacaoException("O cliente ja possui o número máximo de endereço!");
+            throw new ValidacaoException("O cliente já possui o número máximo de endereços!");
         }
 
+        Endereco novoEndereco = prepararEndereco(cliente, endereco, enderecosCliente);
+
+        // Salva o novo endereço no banco de dados
+        return enderecoRepository.save(novoEndereco);
+    }
+
+    // Método auxiliar para preparar o novo endereço
+    private Endereco prepararEndereco(Cliente cliente, Endereco endereco, List<Endereco> enderecosCliente) {
         Endereco novoEndereco = new Endereco();
         novoEndereco.setLogradouro(endereco.getLogradouro());
         novoEndereco.setNumero(endereco.getNumero());
@@ -53,31 +59,32 @@ public class EnderecoService {
         if (enderecosCliente.isEmpty()) {
             novoEndereco.setPrincipal(true);
         } else {
-            // Se o cliente já tem endereços, não marca como principal, a menos que o novo endereço seja explicitamente marcado
-            if (Boolean.TRUE.equals(endereco.getPrincipal())) {
-                // Se o novo endereço for marcado como principal, desmarca os outros como principais
-                for (Endereco e : enderecosCliente) {
-                    if (Boolean.TRUE.equals(e.getPrincipal())) {
-                        e.setPrincipal(false);
-                        enderecoRepository.save(e);  // Salva a atualização do endereço principal anterior
-                    }
-                }
-                novoEndereco.setPrincipal(true);
-            } else {
-                novoEndereco.setPrincipal(false);  // Caso contrário, não marca como principal
-            }
+            // Lógica para marcação do principal
+            marcarEnderecoPrincipal(endereco, enderecosCliente, novoEndereco);
         }
 
-        // Salva o novo endereço no banco de dados
-        return enderecoRepository.save(novoEndereco);
-
+        return novoEndereco;
     }
+
+    // Método auxiliar para marcar o endereço como principal
+    private void marcarEnderecoPrincipal(Endereco endereco, List<Endereco> enderecosCliente, Endereco novoEndereco) {
+        if (Boolean.TRUE.equals(endereco.getPrincipal())) {
+            // Se o novo endereço for marcado como principal, desmarca os outros como principais
+            for (Endereco e : enderecosCliente) {
+                if (Boolean.TRUE.equals(e.getPrincipal())) {
+                    e.setPrincipal(false);
+                    enderecoRepository.save(e);  // Salva a atualização do endereço principal anterior
+                }
+            }
+            novoEndereco.setPrincipal(true);
+        } else {
+            novoEndereco.setPrincipal(false);  // Caso contrário, não marca como principal
+        }
+    }
+
     // 2. Buscar todos os endereços de um cliente pelo ID do cliente com paginação
     public Page<Endereco> listarEnderecosPorCliente(Long clienteId, Pageable pageable) throws NotFoundException {
-        // Verifica se o cliente existe
-        if (!clienteRepository.existsById(clienteId)) {
-            throw new NotFoundException(MENSAGEM_CLIENTE_NAO_ENCONTRADO);
-        }
+        getClienteById(clienteId); // Verifica se o cliente existe
 
         // Consulta os endereços do cliente com paginação
         return enderecoRepository.findByClienteId(clienteId, pageable);
@@ -86,18 +93,17 @@ public class EnderecoService {
     // 3. Buscar um endereço específico de um cliente
     public Endereco buscarEnderecoPorId(Long clienteId, Long enderecoId) throws NotFoundException {
         return enderecoRepository.findByIdAndClienteId(enderecoId, clienteId)
-                .orElseThrow(()-> new NotFoundException(MENSAGEM_ENDERECO_POR_CLIENTE_NAO_ENCONTRADO));
+                .orElseThrow(() -> new NotFoundException(MENSAGEM_ENDERECO_POR_CLIENTE_NAO_ENCONTRADO));
     }
 
     // 4. Editar um endereço específico associado a um cliente
     public Endereco atualizarEndereco(Long clienteId, Long enderecoId, Endereco enderecoAtualizado) throws NotFoundException {
-        Endereco endereco = enderecoRepository.findByIdAndClienteId(enderecoId, clienteId)
-                .orElseThrow(()-> new NotFoundException(MENSAGEM_ENDERECO_POR_CLIENTE_NAO_ENCONTRADO));
+        Endereco endereco = buscarEnderecoPorId(clienteId, enderecoId);
 
         // Verifica se o endereço atualizado deve ser principal
         if (Boolean.TRUE.equals(enderecoAtualizado.getPrincipal())) {
             // Marca o novo endereço como principal e os outros como secundários
-            List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId, Pageable.unpaged()).getContent(); // Paginação não usada aqui
+            List<Endereco> enderecosCliente = enderecoRepository.findByClienteId(clienteId, Pageable.unpaged()).getContent();
             for (Endereco e : enderecosCliente) {
                 if (Boolean.TRUE.equals(e.getPrincipal()) && !e.getId().equals(endereco.getId())) {
                     e.setPrincipal(false);
@@ -123,9 +129,7 @@ public class EnderecoService {
 
     // 5. Deletar um endereço específico de um cliente
     public void deletarEndereco(Long clienteId, Long enderecoId) throws NotFoundException {
-        // Busca o endereço a ser deletado
-        Endereco endereco = enderecoRepository.findByIdAndClienteId(enderecoId, clienteId)
-                .orElseThrow(()-> new NotFoundException(MENSAGEM_ENDERECO_POR_CLIENTE_NAO_ENCONTRADO));
+        Endereco endereco = buscarEnderecoPorId(clienteId, enderecoId);
 
         boolean enderecoEraPrincipal = Boolean.TRUE.equals(endereco.getPrincipal());
 
@@ -144,5 +148,11 @@ public class EnderecoService {
                 enderecoRepository.save(enderecoComMaiorId);
             }
         }
+    }
+
+    // Método auxiliar para verificar a existência de um cliente
+    private Cliente getClienteById(Long clienteId) throws NotFoundException {
+        return clienteRepository.findById(clienteId)
+                .orElseThrow(() -> new NotFoundException(MENSAGEM_CLIENTE_NAO_ENCONTRADO));
     }
 }
